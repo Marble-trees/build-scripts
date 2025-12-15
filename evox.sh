@@ -7,7 +7,7 @@
 TG_BOT_TOKEN="8150376575:AAFCpGpdXQsmYwM6GYoF1PiTmdX3mysHEM8"
 TG_BUILD_CHAT_ID="-5028083879"
 DEVICE_CODE="marble"
-BUILD_TARGET="AxionOS AOSP"
+BUILD_TARGET="Evolution-X AOSP QPR1"
 ANDROID_VERSION="16"
 
 # SHELL CONFIGURATION
@@ -103,25 +103,32 @@ start_build_process() {
     # =========================================================
 
     # Init AxionOS Android 16 branch
-    repo init --depth=1 --no-repo-verify -u https://github.com/AxionAOSP/android.git -b lineage-23.0 --git-lfs -g default,-mips,-darwin,-notdefault
+    repo init --depth=1 --no-repo-verify -u https://github.com/Evolution-X/manifest -b bq1 --git-lfs -g default,-mips,-darwin,-notdefault
     git clone https://github.com/alioth-stuffs/local_manifest --depth 1 -b axion .repo/local_manifests
     # Resync sources
     repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
     /opt/crave/resync.sh
 
+    # Sign build with custom signing keys from Evolution-X
+    git clone https://github.com/Evolution-X/vendor_evolution-priv_keys-template vendor/evolution-priv/keys --depth 1
+    chmod +x vendor/evolution-priv/keys/keys.sh
+    pushd vendor/evolution-priv/keys
+    ./keys.sh
+    popd
+
     # Setup the build environment
     . build/envsetup.sh
     echo "Environment setup success."
 
-    # Generate private keys
-    gk -s
+    # Lunch target selection
+    lunch lineage_marble-bp3a-user
+    echo "Lunch command executed."
 
     # Build ROM
     echo "========================="
     echo "Starting ROM Compilation..."
     echo "========================="
-    axion marble user gms pico
-    ax -br
+    m evolution
 
     BUILD_STATUS=$? # Capture exit code immediately
 
@@ -178,7 +185,7 @@ start_build_process() {
         rm -rf go-up*
         wget https://raw.githubusercontent.com/nekoshirro/tools-gofile/refs/heads/private/go-up
         chmod +x go-up
-        ./go-up out/target/product/marble/*axion*marble*.zip
+        ./go-up out/target/product/marble/Evolution*.zip
     else
         echo "Build failed. Skipping upload."
     fi
