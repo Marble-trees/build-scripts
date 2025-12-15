@@ -106,8 +106,12 @@ start_build_process() {
     repo init --depth=1 --no-repo-verify -u https://github.com/Evolution-X/manifest -b bq1 --git-lfs -g default,-mips,-darwin,-notdefault
     git clone https://github.com/alioth-stuffs/local_manifest --depth 1 -b evolu .repo/local_manifests
     # Resync sources
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
     /opt/crave/resync.sh
+
+    chmod +x rbe/install_rbe.sh
+    pushd rbe
+    ./install_rbe.sh
+    popd
 
     # Sign build with custom signing keys from Evolution-X
     git clone https://github.com/Evolution-X/vendor_evolution-priv_keys-template vendor/evolution-priv/keys --depth 1
