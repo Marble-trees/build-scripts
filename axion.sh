@@ -113,15 +113,25 @@ start_build_process() {
 
     # Clean up existing trees
     echo "Starting remove repositories..."
+    # Device
     rm -rf device/xiaomi/marble
-    rm -rf vendor/xiaomi/marble
-    rm -rf kernel/xiaomi/marble
-    rm -rf kernel/xiaomi/marble-devicetrees
-    rm -rf kernel/xiaomi/marble-modules
+    rm -rf device/xiaomi/sm8450-common
     rm -rf device/xiaomi/miuicamera-marble
+    # Vendor
+    rm -rf vendor/xiaomi/marble
+    rm -rf vendor/xiaomi/sm8450-common
     rm -rf vendor/xiaomi/miuicamera-marble
-    rm -rf out/target/product/marble
+    # Kernel
+    rm -rf kernel/xiaomi/sm8450
+    rm -rf kernel/xiaomi/sm8450-devicetrees
+    rm -rf kernel/xiaomi/sm8450-modules
+    # Hardware
     rm -rf hardware/xiaomi
+    rm -rf hardware/dolby
+    # Apps
+    rm -rf packages/apps/GameBar
+    # Build output
+    rm -rf out/target/product/marble
     echo "Successfully deleted previous repositories."
 
     echo "Cloning device stuff..."
