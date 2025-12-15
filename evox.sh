@@ -104,7 +104,7 @@ start_build_process() {
 
     # Init AxionOS Android 16 branch
     repo init --depth=1 --no-repo-verify -u https://github.com/Evolution-X/manifest -b bq1 --git-lfs -g default,-mips,-darwin,-notdefault
-    git clone https://github.com/alioth-stuffs/local_manifest --depth 1 -b axion .repo/local_manifests
+    git clone https://github.com/alioth-stuffs/local_manifest --depth 1 -b evolu .repo/local_manifests
     # Resync sources
     repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
     /opt/crave/resync.sh
