@@ -103,7 +103,7 @@ start_build_process() {
     # =========================================================
 
     # Init AxionOS Android 16 branch
-    repo init -u https://github.com/AxionAOSP/android.git -b lineage-23.0 --git-lfs
+    repo init --depth=1 --no-repo-verify -u https://github.com/AxionAOSP/android.git -b lineage-23.0 --git-lfs -g default,-mips,-darwin,-notdefault
 
     # Resync sources
     repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
