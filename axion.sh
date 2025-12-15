@@ -168,7 +168,7 @@ start_build_process() {
     echo "========================="
     echo "Starting ROM Compilation..."
     echo "========================="
-    axion marble gms core user
+    axion marble gms pico user
     axion -br -j$(nproc --all)
 
     BUILD_STATUS=$? # Capture exit code immediately
