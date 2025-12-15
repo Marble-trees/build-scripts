@@ -104,58 +104,10 @@ start_build_process() {
 
     # Init AxionOS Android 16 branch
     repo init --depth=1 --no-repo-verify -u https://github.com/AxionAOSP/android.git -b lineage-23.0 --git-lfs -g default,-mips,-darwin,-notdefault
-
+    git clone https://github.com/alioth-stuffs/local_manifest --depth 1 -b axion .repo/local_manifests
     # Resync sources
     repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
     /opt/crave/resync.sh
-    repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
-    /opt/crave/resync.sh
-
-    # Clean up existing trees
-    echo "Starting remove repositories..."
-    # Device
-    rm -rf device/xiaomi/marble
-    rm -rf device/xiaomi/sm8450-common
-    rm -rf device/xiaomi/miuicamera-marble
-    # Vendor
-    rm -rf vendor/xiaomi/marble
-    rm -rf vendor/xiaomi/sm8450-common
-    rm -rf vendor/xiaomi/miuicamera-marble
-    # Kernel
-    rm -rf kernel/xiaomi/sm8450
-    rm -rf kernel/xiaomi/sm8450-devicetrees
-    rm -rf kernel/xiaomi/sm8450-modules
-    # Hardware
-    rm -rf hardware/xiaomi
-    rm -rf hardware/dolby
-    # Apps
-    rm -rf packages/apps/GameBar
-    # Build output
-    rm -rf out/target/product/marble
-    echo "Successfully deleted previous repositories."
-
-    echo "Cloning device stuff..."
-    # Device Trees
-    git clone --depth=1 https://github.com/Marble-trees/android_device_xiaomi_marble device/xiaomi/marble
-    git clone --depth=1 https://github.com/Chaitanyakm/device_xiaomi_miuicamera-marble device/xiaomi/miuicamera-marble
-    git clone --depth=1 https://github.com/Marble-trees/android_device_xiaomi_sm8450-common device/xiaomi/sm8450-common
-
-    # Vendor Trees
-    git clone --depth=1 https://gitlab.com/Chaitanyakm/vendor_xiaomi_miuicamera-marble vendor/xiaomi/miuicamera-marble
-    git clone --depth=1 https://github.com/Marble-trees/proprietary_vendor_xiaomi_marble vendor/xiaomi/marble
-    git clone --depth=1 https://github.com/Marble-trees/proprietary_vendor_xiaomi_sm8450-common vendor/xiaomi/sm8450-common
-
-    # Kernel & Toolchain
-    git clone --depth=1 https://github.com/LineageOS/android_kernel_xiaomi_sm8450 kernel/xiaomi/sm8450
-    git clone --depth=1 https://github.com/LineageOS/android_kernel_xiaomi_sm8450-devicetrees kernel/xiaomi/sm8450-devicetrees
-    git clone --depth=1 https://github.com/LineageOS/android_kernel_xiaomi_sm8450-modules kernel/xiaomi/sm8450-modules
-
-    # Camera/Hardware
-    git clone --depth=1 https://github.com/Marble-trees/android_hardware_dolby hardware/dolby
-    git clone --depth=1 https://github.com/LineageOS/android_hardware_xiaomi hardware/xiaomi
-    git clone https://github.com/Marble-trees/packages_apps_GameBar packages/apps/GameBar
-
-    echo "Tree sync complete."
 
     # Setup the build environment
     . build/envsetup.sh
