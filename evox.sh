@@ -108,11 +108,6 @@ start_build_process() {
     # Resync sources
     /opt/crave/resync.sh
 
-    chmod +x rbe/install_rbe.sh
-    pushd rbe
-    ./install_rbe.sh
-    popd
-
     # Sign build with custom signing keys from Evolution-X
     git clone https://github.com/Evolution-X/vendor_evolution-priv_keys-template vendor/evolution-priv/keys --depth 1
     chmod +x vendor/evolution-priv/keys/keys.sh
