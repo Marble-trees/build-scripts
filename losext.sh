@@ -103,6 +103,7 @@ start_build_process() {
     # =========================================================
 
     # Init AxionOS Android 16 branch
+    rm -rf .repo/local_manifests
     repo init --depth=1 --no-repo-verify -u https://github.com/Los-Ext/android_manifest.git -b 16 --git-lfs -g default,-mips,-darwin,-notdefault
     git clone https://github.com/alioth-stuffs/local_manifest --depth 1 -b losext .repo/local_manifests
     # Resync sources
