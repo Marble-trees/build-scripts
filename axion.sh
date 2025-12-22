@@ -114,7 +114,7 @@ start_build_process() {
     echo "Environment setup success."
 
     # Generate private keys
-    #gk -s
+    gk -s
 
     # Build ROM
     echo "========================="
