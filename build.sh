@@ -85,7 +85,7 @@ send_telegram() {
   # Convert [text](link) to <a href="link">text</a>
   html=$(echo "$html" | sed 's/\[\([^]]*\)\](\([^)]*\))/<a href="\2">\1<\/a>/g')
 
-  echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] Sending message to Telegram (${chat_id})"
+  echo -e "\n[$(date '+%Y-%m-%d %I:%M:%S %p')] Sending message to Telegram (${chat_id})"
   curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
     --data-urlencode "chat_id=${chat_id}" \
     --data-urlencode "text=${html}" \
@@ -112,7 +112,8 @@ handle_error() {
 *ROM:* $ROM_NAME
 *Stage:* $stage
 *Exit Code:* $exit_code
-*Time Elapsed:* $duration_fmt"
+*Time Elapsed:* $duration_fmt
+*Failure Time:* $(date '+%Y-%m-%d %I:%M:%S %p %Z')"
     
     send_telegram "$TG_BUILD_CHAT_ID" "$error_msg"
     echo "Error in stage: $stage (Exit Code: $exit_code)"
@@ -133,7 +134,7 @@ init_environment() {
 *ROM:* $ROM_NAME
 *Android:* $ANDROID_VERSION
 *Device:* $DEVICE
-*Start Time:* $(date '+%Y-%m-%d %H:%M:%S %Z')"
+*Start Time:* $(date '+%Y-%m-%d %I:%M:%S %p %Z')"
     send_telegram "$TG_BUILD_CHAT_ID" "$initial_msg"
 }
 
@@ -197,7 +198,8 @@ finalize_build() {
 *Android:* $ANDROID_VERSION
 *Device:* $DEVICE
 *Duration:* $DURATION_FORMATTED
-*Status:* $status_text"
+*Status:* $status_text
+*Finished Time:* $(date '+%Y-%m-%d %I:%M:%S %p %Z')"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ $BUILD_STATUS -eq 0 ]]; then
