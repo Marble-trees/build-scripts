@@ -144,13 +144,7 @@ init_environment() {
 }
 
 sync_sources() {
-    echo "Initializing and syncing sources..."
-    repo init --depth=1 --no-repo-verify -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --git-lfs -g default,-mips,-darwin,-notdefault || handle_error $? "repo_init"
-    
-    rm -rf .repo/local_manifests
-    git clone "$LOCAL_MANIFEST_URL" --depth 1 -b "$LOCAL_MANIFEST_BRANCH" .repo/local_manifests || handle_error $? "local_manifest_clone"
-    
-    /opt/crave/resync.sh || handle_error $? "resync"
+    /opt/crave/resync.sh
 }
 
 setup_keys() {
