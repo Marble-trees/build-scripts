@@ -17,9 +17,9 @@ case "${ROM_INPUT,,}" in
     *"evolution"*)
         ROM_NAME="Evolution-X"
         MANIFEST_URL="https://github.com/Evolution-X/manifest"
-        MANIFEST_BRANCH="bq2"
-        LOCAL_MANIFEST_URL="https://github.com/Marble-trees/local-manifest"
-        LOCAL_MANIFEST_BRANCH="main"
+        MANIFEST_BRANCH="bq1"
+        LOCAL_MANIFEST_URL="https://github.com/alioth-stuffs/local_manifest"
+        LOCAL_MANIFEST_BRANCH="evolu"
         LUNCH_TARGET="lineage_${DEVICE}-bp4a-user"
         BUILD_COMMAND="m evolution"
         ;;
@@ -138,7 +138,20 @@ init_environment() {
 }
 
 sync_sources() {
+    send_telegram "$TG_BUILD_CHAT_ID" "🔄 *Syncing sources...*
+*ROM:* $ROM_NAME"
+
+    echo "Initializing repo..."
+    repo init --depth=1 --no-repo-verify -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --git-lfs -g default,-mips,-darwin,-notdefault
+    
+    echo "Cloning local manifest..."
+    rm -rf .repo/local_manifests
+    git clone "$LOCAL_MANIFEST_URL" --depth 1 -b "$LOCAL_MANIFEST_BRANCH" .repo/local_manifests
+    
+    echo "Syncing sources..."
     /opt/crave/resync.sh
+
+    send_telegram "$TG_BUILD_CHAT_ID" "✅ *Source sync completed!*"
 }
 
 setup_keys() {
