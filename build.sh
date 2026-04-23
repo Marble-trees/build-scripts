@@ -18,8 +18,8 @@ case "${ROM_INPUT,,}" in
         ROM_NAME="Evolution-X"
         MANIFEST_URL="https://github.com/Evolution-X/manifest"
         MANIFEST_BRANCH="bq2"
-        LOCAL_MANIFEST_URL="https://github.com/alioth-stuffs/local_manifest"
-        LOCAL_MANIFEST_BRANCH="evolu"
+        LOCAL_MANIFEST_URL="https://github.com/Marble-trees/local-manifest"
+        LOCAL_MANIFEST_BRANCH="main"
         LUNCH_TARGET="lineage_${DEVICE}-bp4a-user"
         BUILD_COMMAND="m evolution"
         ;;
@@ -27,8 +27,8 @@ case "${ROM_INPUT,,}" in
         ROM_NAME="Infinity-X"
         MANIFEST_URL="https://github.com/ProjectInfinity-X/manifest"
         MANIFEST_BRANCH="16"
-        LOCAL_MANIFEST_URL="https://github.com/alioth-stuffs/local_manifest"
-        LOCAL_MANIFEST_BRANCH="infinity"
+        LOCAL_MANIFEST_URL="https://github.com/Marble-trees/local-manifest"
+        LOCAL_MANIFEST_BRANCH="main"
         LUNCH_TARGET="infinity_${DEVICE}-user"
         BUILD_COMMAND="m bacon"
         ;;
@@ -54,8 +54,8 @@ case "${ROM_INPUT,,}" in
         ROM_NAME="Lunaris-AOSP"
         MANIFEST_URL="https://github.com/Lunaris-AOSP/android"
         MANIFEST_BRANCH="16.2"
-        LOCAL_MANIFEST_URL="https://github.com/alioth-stuffs/local_manifest"
-        LOCAL_MANIFEST_BRANCH="lunaris"
+        LOCAL_MANIFEST_URL="https://github.com/Marble-trees/local-manifest"
+        LOCAL_MANIFEST_BRANCH="main"
         LUNCH_TARGET="lineage_${DEVICE}-bp4a-user"
         BUILD_COMMAND="m bacon"
         ;;
