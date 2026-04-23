@@ -76,26 +76,20 @@ send_telegram() {
   local chat_id="$1"
   local message="$2"
   
-  # Escape characters for MarkdownV2
-  local escaped_message=$(echo "$message" | sed \
-    -e 's/\*/\*TEMP\*/g' -e 's/_/\_TEMP\_/g' -e 's/\[/\\[/g' -e 's/\]/\\]/g' \
-    -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/~/\\~/g' -e 's/`/\`/g' \
-    -e 's/>/\\>/g' -e 's/#/\\#/g' -e 's/+/\\+/g' -e 's/-/\\-/g' \
-    -e 's/=/\\=/g' -e 's/|/\\|/g' -e 's/{/\\{/g' -e 's/}/\\}/g' \
-    -e 's/\./\\./g' -e 's/!/\\!/g')
-
-  local re_escaped_message=$(echo "$escaped_message" | sed \
-    -e 's/\*TEMP\*/\*/g' -e 's/\_TEMP\_/\_/g')
+  # Escape HTML special characters
+  local escaped=$(echo "$message" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
   
-  local encoded_message=$(echo "$re_escaped_message" | sed \
-    -e 's/%/%25/g' -e 's/&/%26/g' -e 's/+/%2b/g' -e 's/ /%20/g' \
-    -e 's/\"/%22/g' -e 's/'"'"'/%27/g' -e 's/\n/%0A/g')
-    
+  # Convert *bold* to <b>bold</b>
+  local html=$(echo "$escaped" | sed 's/\*\([^*]*\)\*/<b>\1<\/b>/g')
+  
+  # Convert [text](link) to <a href="link">text</a>
+  html=$(echo "$html" | sed 's/\[\([^]]*\)\](\([^)]*\))/<a href="\2">\1<\/a>/g')
+
   echo -e "\n[$(date '+%Y-%m-%d %H:%M:%S')] Sending message to Telegram (${chat_id})"
   curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage" \
-    -d "chat_id=${chat_id}" \
-    -d "text=${encoded_message}" \
-    -d "parse_mode=MarkdownV2" \
+    --data-urlencode "chat_id=${chat_id}" \
+    --data-urlencode "text=${html}" \
+    -d "parse_mode=HTML" \
     -d "disable_web_page_preview=true"
 }
 
@@ -114,11 +108,11 @@ handle_error() {
     local duration=$((end_time - START_TIME))
     local duration_fmt=$(format_duration $duration)
 
-    local error_msg="❌ *Build Failed Early\!*
-    *ROM:* $ROM_NAME
-    *Stage:* $stage
-    *Exit Code:* $exit_code
-    *Time Elapsed:* $duration_fmt"
+    local error_msg="❌ *Build Failed Early!*
+*ROM:* $ROM_NAME
+*Stage:* $stage
+*Exit Code:* $exit_code
+*Time Elapsed:* $duration_fmt"
     
     send_telegram "$TG_BUILD_CHAT_ID" "$error_msg"
     echo "Error in stage: $stage (Exit Code: $exit_code)"
@@ -135,11 +129,11 @@ init_environment() {
     export BUILD_HOSTNAME=marvel
     START_TIME=$(date +%s)
 
-    local initial_msg="⚙️ *ROM Build Started\!*
-    *ROM:* $ROM_NAME
-    *Android:* $ANDROID_VERSION
-    *Device:* $DEVICE
-    *Start Time:* $(date '+%Y-%m-%d %H:%M:%S %Z')"
+    local initial_msg="⚙️ *ROM Build Started!*
+*ROM:* $ROM_NAME
+*Android:* $ANDROID_VERSION
+*Device:* $DEVICE
+*Start Time:* $(date '+%Y-%m-%d %H:%M:%S %Z')"
     send_telegram "$TG_BUILD_CHAT_ID" "$initial_msg"
 }
 
@@ -185,16 +179,16 @@ finalize_build() {
         local status_text="Failure (Exit Code: $BUILD_STATUS)"
     fi
 
-    local final_msg="${status_icon} *Build Finished\!*
-    *ROM:* $ROM_NAME
-    *Android:* $ANDROID_VERSION
-    *Device:* $DEVICE
-    *Duration:* $DURATION_FORMATTED
-    *Status:* $status_text"
+    local final_msg="${status_icon} *Build Finished!*
+*ROM:* $ROM_NAME
+*Android:* $ANDROID_VERSION
+*Device:* $DEVICE
+*Duration:* $DURATION_FORMATTED
+*Status:* $status_text"
     send_telegram "$TG_BUILD_CHAT_ID" "$final_msg"
 
     if [[ $BUILD_STATUS -eq 0 ]]; then
-        echo "Build succeshttps://raw.githubusercontent.com/Sanjivns/GoFile-Upload/refs/heads/master/uploadsful. Starting upload..."
+        echo "Build successful. Starting upload..."
         upload_build
     else
         echo "Build failed. Displaying error logs..."
@@ -219,18 +213,18 @@ upload_build() {
         local download_link=$(echo "$upload_output" | grep -o 'https://gofile.io/d/[a-zA-Z0-9]*')
         
         if [ -n "$download_link" ]; then
-            local link_msg="📦 *Upload Complete\!*
-            *ROM:* $ROM_NAME
-            *Device:* $DEVICE
-            *Link:* [Click Here to Download]($download_link)"
+            local link_msg="📦 *Upload Complete!*
+*ROM:* $ROM_NAME
+*Device:* $DEVICE
+*Link:* [Click Here to Download]($download_link)"
             send_telegram "$TG_BUILD_CHAT_ID" "$link_msg"
         else
             echo "Error: Could not extract download link from upload output."
-            send_telegram "$TG_BUILD_CHAT_ID" "⚠️ *Upload finished but link extraction failed\.* Check logs\."
+            send_telegram "$TG_BUILD_CHAT_ID" "⚠️ *Upload finished but link extraction failed.* Check logs."
         fi
     else
         echo "Error: No build ZIP found for upload."
-        send_telegram "$TG_BUILD_CHAT_ID" "❌ *Upload failed\:* Build ZIP not found\."
+        send_telegram "$TG_BUILD_CHAT_ID" "❌ *Upload failed:* Build ZIP not found."
     fi
 }
 
