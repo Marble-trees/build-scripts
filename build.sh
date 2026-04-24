@@ -321,10 +321,17 @@ finalize_build() {
 
 upload_build() {
     local build_zip
-    build_zip=$(ls ${OUT_DIR}/*.zip 2>/dev/null | head -n 1)
+
+    # Try to find a zip matching both ROM name and device codename (under 3.5GB)
+    build_zip=$(find ${OUT_DIR}/ -maxdepth 1 -iname "*${ROM_NAME}*${DEVICE}*.zip" -size -3584M 2>/dev/null | head -n 1)
+
+    # Fallback: match by device name only (under 3.5GB)
+    if [ -z "$build_zip" ]; then
+        build_zip=$(find ${OUT_DIR}/ -maxdepth 1 -iname "*${DEVICE}*.zip" -size -3584M 2>/dev/null | head -n 1)
+    fi
 
     if [ -z "$build_zip" ]; then
-        echo "Error: No build ZIP found for upload."
+        echo "Error: No build ZIP found matching '${ROM_NAME}' or '${DEVICE}' in ${OUT_DIR}/"
         send_telegram "$TG_BUILD_CHAT_ID" "❌ *Upload failed:* Build ZIP not found."
         return 1
     fi
