@@ -3,12 +3,18 @@
 # =========================================================
 # CONFIGURATION & TOKENS
 # =========================================================
+set -o pipefail
+
 TG_BOT_TOKEN="8749239007:AAHxq22b91xoBUFUXNsTIy-aK2P7j0fFNoU"
 TG_BUILD_CHAT_ID="1729991333"
 
 # Input Arguments
 ROM_INPUT=${1:-"evolution"}
 DEVICE=${2:-"marble"}
+
+# Build log file
+LOG="build.log"
+OUT_DIR="out/target/product/${DEVICE}"
 
 # =========================================================
 # ROM-SPECIFIC CONFIGURATION
@@ -69,6 +75,29 @@ esac
 ANDROID_VERSION="16"
 
 # =========================================================
+# UTILITY FUNCTIONS
+# =========================================================
+
+retry() {
+    local max_attempts=$1; shift
+    local delay=$1; shift
+    local attempt=1
+
+    while [ $attempt -le $max_attempts ]; do
+        echo "[Attempt $attempt/$max_attempts] $*"
+        if "$@"; then
+            return 0
+        fi
+        echo "Failed. Retrying in ${delay}s..."
+        sleep "$delay"
+        ((attempt++))
+    done
+
+    echo "All $max_attempts attempts failed."
+    return 1
+}
+
+# =========================================================
 # TELEGRAM FUNCTIONS
 # =========================================================
 
@@ -91,6 +120,18 @@ send_telegram() {
     --data-urlencode "text=${html}" \
     -d "parse_mode=HTML" \
     -d "disable_web_page_preview=true"
+}
+
+send_telegram_file() {
+  local chat_id="$1"
+  local file_path="$2"
+  local caption="$3"
+
+  echo -e "\n[$(date '+%Y-%m-%d %I:%M:%S %p')] Sending file to Telegram (${chat_id})"
+  curl -s -X POST "https://api.telegram.org/bot${TG_BOT_TOKEN}/sendDocument" \
+    -F chat_id="$chat_id" \
+    -F document=@"$file_path" \
+    -F caption="$caption" > /dev/null
 }
 
 format_duration() {
@@ -121,6 +162,50 @@ handle_error() {
 }
 
 # =========================================================
+# GOFILE UPLOAD (native, with multi-server fallback)
+# =========================================================
+
+gofile_upload() {
+    local file="$1"
+    local filename
+    filename=$(basename "$file")
+
+    [ -f "$file" ] || {
+        echo "⚠️ Skipped (not found): $filename" >&2
+        return 1
+    }
+
+    # Resolve available GoFile servers
+    local servers
+    mapfile -t servers < <(curl -s "https://api.gofile.io/servers" | jq -r '.data.servers[].name')
+
+    if [ "${#servers[@]}" -eq 0 ]; then
+        echo "Error: Could not resolve any GoFile servers." >&2
+        return 1
+    fi
+
+    # Try servers in random order for load distribution
+    for server in $(printf "%s\n" "${servers[@]}" | shuf); do
+        local response
+        response=$(curl -4 --http1.1 -sf --connect-timeout 30 --max-time 600 \
+            -F "file=@${file}" \
+            "https://${server}.gofile.io/contents/uploadFile")
+
+        local link
+        link=$(echo "$response" | jq -r '.data.downloadPage // empty')
+
+        if [ -n "$link" ]; then
+            echo "$link"
+            return 0
+        fi
+
+        echo "GoFile server $server failed, trying next..." >&2
+    done
+
+    return 1
+}
+
+# =========================================================
 # MODULAR BUILD STEPS
 # =========================================================
 
@@ -138,6 +223,13 @@ init_environment() {
     send_telegram "$TG_BUILD_CHAT_ID" "$initial_msg"
 }
 
+clean_stale_trees() {
+    echo "Cleaning stale device/vendor/kernel trees..."
+    rm -rf .repo/local_manifests
+    rm -rf {device,kernel,hardware,vendor}/xiaomi
+    rm -rf {device,kernel,hardware,vendor}/qcom
+}
+
 sync_sources() {
     send_telegram "$TG_BUILD_CHAT_ID" "🔄 *Syncing sources...*
 *ROM:* $ROM_NAME"
@@ -146,11 +238,14 @@ sync_sources() {
     repo init --depth=1 --no-repo-verify -u "$MANIFEST_URL" -b "$MANIFEST_BRANCH" --git-lfs -g default,-mips,-darwin,-notdefault
     
     echo "Cloning local manifest..."
-    rm -rf .repo/local_manifests
     git clone "$LOCAL_MANIFEST_URL" --depth 1 -b "$LOCAL_MANIFEST_BRANCH" .repo/local_manifests
     
     echo "Syncing sources..."
-    /opt/crave/resync.sh
+    if [ -f /opt/crave/resync.sh ]; then
+        retry 3 30 /opt/crave/resync.sh || handle_error $? "sync"
+    else
+        retry 3 30 repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags || handle_error $? "sync"
+    fi
 
     send_telegram "$TG_BUILD_CHAT_ID" "✅ *Source sync completed!*"
 }
@@ -168,16 +263,23 @@ setup_keys() {
 
 compile_rom() {
     echo "Setting up build environment..."
-    . build/envsetup.sh || handle_error $? "envsetup"
+    . build/envsetup.sh
+    if ! type lunch &>/dev/null; then
+        handle_error 1 "envsetup"
+    fi
     
     echo "Lunching target: $LUNCH_TARGET"
     lunch "$LUNCH_TARGET" || handle_error $? "lunch"
 
+    echo "Running installclean..."
+    mka installclean
+
     echo "========================="
     echo "Starting ROM Compilation..."
     echo "========================="
-    $BUILD_COMMAND
-    BUILD_STATUS=$?
+    touch "$LOG"
+    $BUILD_COMMAND 2>&1 | tee "$LOG"
+    BUILD_STATUS=${PIPESTATUS[0]}
 }
 
 finalize_build() {
@@ -206,40 +308,53 @@ finalize_build() {
         echo "Build successful. Starting upload..."
         upload_build
     else
-        echo "Build failed. Displaying error logs..."
-        [ -f out/error.log ] && cat out/error.log
+        echo "Build failed. Sending error logs..."
+        if [ -f out/error.log ]; then
+            send_telegram_file "$TG_BUILD_CHAT_ID" "out/error.log" "📜 Build Error Log — ${ROM_NAME} | ${DEVICE}"
+        elif [ -f "$LOG" ]; then
+            tail -n 120 "$LOG" > error_tail.log
+            send_telegram_file "$TG_BUILD_CHAT_ID" "error_tail.log" "📜 Last 120 lines — ${ROM_NAME} | ${DEVICE} (no out/error.log found)"
+            rm -f error_tail.log
+        fi
     fi
 }
 
 upload_build() {
-    echo "Downloading GoFile upload script..."
-    rm -rf upload*
-    wget -q https://raw.githubusercontent.com/Sanjivns/GoFile-Upload/refs/heads/master/upload
-    chmod +x upload
-    
-    local build_zip=$(ls out/target/product/${DEVICE}/${ROM_NAME}*.zip 2>/dev/null | head -n 1)
-    if [ -n "$build_zip" ]; then
-        echo "Uploading $build_zip..."
-        # Capture output to extract link
-        local upload_output=$(./upload "$build_zip")
-        echo "$upload_output"
-        
-        # Extract the GoFile download link (usually looks like https://gofile.io/d/XXXXXX)
-        local download_link=$(echo "$upload_output" | grep -o 'https://gofile.io/d/[a-zA-Z0-9]*')
-        
-        if [ -n "$download_link" ]; then
-            local link_msg="📦 *Upload Complete!*
-*ROM:* $ROM_NAME
-*Device:* $DEVICE
-*Link:* [Click Here to Download]($download_link)"
-            send_telegram "$TG_BUILD_CHAT_ID" "$link_msg"
-        else
-            echo "Error: Could not extract download link from upload output."
-            send_telegram "$TG_BUILD_CHAT_ID" "⚠️ *Upload finished but link extraction failed.* Check logs."
-        fi
-    else
+    local build_zip
+    build_zip=$(ls ${OUT_DIR}/*.zip 2>/dev/null | head -n 1)
+
+    if [ -z "$build_zip" ]; then
         echo "Error: No build ZIP found for upload."
         send_telegram "$TG_BUILD_CHAT_ID" "❌ *Upload failed:* Build ZIP not found."
+        return 1
+    fi
+
+    local filename
+    filename=$(basename "$build_zip")
+
+    local filesize
+    filesize=$(du -h "$build_zip" | cut -f1)
+
+    local sha256
+    sha256=$(sha256sum "$build_zip" | cut -d' ' -f1)
+
+    echo "Uploading $build_zip (${filesize}, SHA256: ${sha256})..."
+
+    local download_link
+    download_link=$(gofile_upload "$build_zip")
+
+    if [ -n "$download_link" ]; then
+        local link_msg="📦 *Upload Complete!*
+*ROM:* $ROM_NAME
+*Device:* $DEVICE
+*File:* $filename
+*Size:* $filesize
+*SHA256:* $sha256
+*Link:* [Click Here to Download]($download_link)"
+        send_telegram "$TG_BUILD_CHAT_ID" "$link_msg"
+    else
+        echo "Error: GoFile upload failed."
+        send_telegram "$TG_BUILD_CHAT_ID" "⚠️ *Upload failed.* All GoFile servers returned errors."
     fi
 }
 
@@ -249,6 +364,7 @@ upload_build() {
 
 main() {
     init_environment
+    clean_stale_trees
     sync_sources
     setup_keys
     compile_rom
