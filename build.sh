@@ -34,7 +34,7 @@ case "${ROM_INPUT,,}" in
         MANIFEST_URL="https://github.com/ProjectInfinity-X/manifest"
         MANIFEST_BRANCH="16"
         LOCAL_MANIFEST_URL="https://github.com/Marble-trees/local-manifest"
-        LOCAL_MANIFEST_BRANCH="main"
+        LOCAL_MANIFEST_BRANCH="inf"
         LUNCH_TARGET="infinity_${DEVICE}-user"
         BUILD_COMMAND="m bacon"
         ;;
