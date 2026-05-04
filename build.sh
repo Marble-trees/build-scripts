@@ -226,6 +226,7 @@ init_environment() {
 clean_stale_trees() {
     echo "Cleaning stale device/vendor/kernel trees..."
     rm -rf .repo/local_manifests
+    rm -rf vendor/infinity-priv
     rm -rf {device,kernel,hardware,vendor}/xiaomi
     rm -rf {device,kernel,hardware,vendor}/qcom
 }
